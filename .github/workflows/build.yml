@@ -1,0 +1,56 @@
+name: Build GP demo firmware
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  repository_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUILD_TYPE: Release
+  TOOLCHAIN_DIR: ${{ github.workspace }}/tc32
+  SDK_DIR: ${{ github.workspace }}/telink_zigbee_sdk
+  SDK_PREFIX: ${{ github.workspace }}/telink_zigbee_sdk/tl_zigbee_sdk
+  ARTIFACT: ${{ github.workspace }}/build/src/gp_test_device.bin
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Get TC32 toolchain
+        run: >-
+          git clone --branch linux --depth 1
+          https://github.com/devbis/tc32.git
+          "${{ env.TOOLCHAIN_DIR }}"
+
+      - name: Get Telink Zigbee SDK
+        run: >-
+          git clone --branch V3.7.2.0 --depth 1
+          https://github.com/telink-semi/telink_zigbee_sdk.git
+          "${{ env.SDK_DIR }}"
+
+      - name: Build firmware
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE="${{ env.BUILD_TYPE }}" \
+            -DSDK_PREFIX="${{ env.SDK_PREFIX }}" \
+            -DTOOLCHAIN_PREFIX="${{ env.TOOLCHAIN_DIR }}"
+          cmake --build build \
+            --config "${{ env.BUILD_TYPE }}" \
+            --target gp_test_device.bin
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v7
+        with:
+          name: gp-test-device-firmware
+          path: ${{ env.ARTIFACT }}
+          if-no-files-found: error
