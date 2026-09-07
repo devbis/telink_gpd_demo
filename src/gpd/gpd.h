@@ -4,18 +4,15 @@
  * A GPD does not join a Zigbee network: it broadcasts Green Power Data
  * Frames (GPDF) as broadcast, unaddressed-source MAC frames, bypassing the
  * Zigbee NWK/ZDO/APS stack. This library hand-builds the GPDF NWK
- * header/CCM* MIC itself and hands the frame to the stack's MAC-level
- * CGP-DATA.request primitive, cGp_dataReq() (zigbee/gp/cGP_stub.h), posted
- * via a properly pool-allocated buffer - see gpd_frame.c's file header for
- * the full history of why (gpDataReq(), the higher-level GP-DATA.request
- * primitive, turned out to be a receive/relay-triggered queue, not a direct
- * send primitive at all, regardless of how it's called).
+ * header/CCM* MIC itself and hands the frame to a small local adapter that
+ * invokes the stack's ordinary MAC-DATA.request primitive. The adapter uses
+ * a properly pool-allocated buffer so the asynchronous confirmation path can
+ * release it safely.
  *
  * The caller is responsible for having already brought up the radio HW
- * (zb_init(), or equivalent MAC/PHY init) and the real GP module
- * (gp_init(), zigbee/gp/gp.c) before calling gpd_init(). This library does
- * not itself require bdb_init()/network join - it transmits at the MAC
- * layer, independent of NWK/ZDO join state.
+ * (zb_init(), or equivalent MAC/PHY init) before calling gpd_init(). This
+ * library does not require the SDK GP endpoint, bdb_init(), or a network
+ * join: it transmits at the MAC layer, independent of NWK/ZDO state.
  */
 #ifndef SRC_GPD_GPD_H_
 #define SRC_GPD_GPD_H_

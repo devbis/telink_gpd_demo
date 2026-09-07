@@ -5,7 +5,12 @@
  * library stays reusable for a future GPD device with different commands,
  * timing, or security settings.
  */
+#include "zcl_include.h"
+#include "gp.h"
+#include "gpd/gpd.h"
 #include "app_main.h"
+
+#define APP_GPD_PERIOD_MS 10000
 
 /* Well-known default GPD security key "ZigBeeAlliance09", used by many
  * commercial GPDs when no individual/derived key is provisioned. */
@@ -19,12 +24,13 @@ static const u8 APP_GPD_DEMO_SEC_KEY[16] = {
 /* GP spec device id: On/Off Switch. */
 #define APP_GPD_DEMO_DEVICE_ID  0x02
 
-#define APP_GPD_DEMO_CHANNEL    25
+/* The coordinator and the local sniffer are configured for channel 11. */
+#define APP_GPD_DEMO_CHANNEL    11
 
 static int app_gpd_demo_periodicCb(void *arg)
 {
     gpd_sendCommand(GPDF_CMD_ID_ONOFF_TOGGLE, NULL, 0);
-    return TIMEOUT_10SEC;
+    return APP_GPD_PERIOD_MS;
 }
 
 void app_gpd_demo_init(void)
@@ -40,10 +46,9 @@ void app_gpd_demo_init(void)
 
     gpd_init(&cfg);
 
-    /* The commissioning frame is sent once.  Periodic application commands
-     * are scheduled below; cGp_dataReq() itself does not maintain a retry
-     * queue for these broadcast frames. */
+    /* Send commissioning once, then schedule periodic application commands.
+     * Each broadcast frame is submitted independently to the MAC. */
     gpd_sendCommissioning(APP_GPD_DEMO_DEVICE_ID);
 
-    TL_ZB_TIMER_SCHEDULE(app_gpd_demo_periodicCb, NULL, TIMEOUT_10SEC);
+    TL_ZB_TIMER_SCHEDULE(app_gpd_demo_periodicCb, NULL, APP_GPD_PERIOD_MS);
 }

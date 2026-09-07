@@ -1,52 +1,10 @@
 /*
- * gpd_frame.c - hand-builds the GPDF NWK header + CCM* MIC and hands the
- * frame to cGp_dataReq() (zigbee/gp/cGP_stub.h), the MAC-level CGP-DATA.
- * request primitive, instead of the higher-level gpDataReq()
- * (zigbee/gp/dGP_stub.h).
+ * gpd_frame.c - hand-builds the GPDF NWK header and CCM* MIC, then hands the
+ * request to the local MAC-level CGP adapter in gpd_mac.c.
  *
- * History (why this is the fourth implementation of this file):
- *   1. Hand-built 802.15.4 MAC header + GPDF NWK header/MIC, driving
- *      ZB_RADIO_TRX_SWITCH/ZB_RADIO_TX_START directly. Byte-correct but
- *      never reached the air on real hardware.
- *   2/3. cGp_dataReq()/gpDataReq() called directly with a stack-local
- *      request struct, instead of a buffer from zb_buf_allocate(). Both are
- *      task-callback-style functions (`void fn(void *arg)`, meant to be
- *      posted via tl_zbTaskPost()/ev_timer_taskPost() with a pool-allocated
- *      zb_buf_t, not called synchronously with a stack struct - the
- *      recovered source of the precompiled router lib (see
- *      llvm-tc32-arm-based/libzigbee/src/{cGP_stub,dGP_stub}.c) confirms
- *      both `zb_buf_free((zb_buf_t *)arg)` and the buffer being retained
- *      for later async processing). Passing a stack struct where a pool
- *      buffer's header (zb_buf_hdr_t/next, right after
- *      buf[ZB_BUF_SIZE]) is expected is undefined behaviour once anything
- *      downstream treats `arg` as a real zb_buf_t - this is the most
- *      likely explanation for every inconsistent symptom seen across this
- *      file's history (runaway retransmission, total silence, and even an
- *      unrelated-looking early-boot hang once, all from byte-identical
- *      source): garbage buffer-pool bookkeeping is undefined behaviour, not
- *      a deterministic bug.
- *   4. (this version) A real zb_buf_t is allocated via zb_buf_allocate().
- *      cgp_data_req_t is aliased onto its first bytes (matching the
- *      convention above - the pointer handed to cGp_dataReq() *is* the
- *      zb_buf_t*), the GPDF bytes are placed further into the same
- *      buffer's data area, and the request is posted via
- *      tl_zbTaskPost(cGp_dataReq, buf) rather than called directly.
- *      cGp_dataReq() (per the recovered source) unconditionally calls
- *      tl_zbMacMcpsDataRequestProc() - a real, single MAC data request, no
- *      internal retry/queue logic of its own - and the buffer is freed
- *      later by the MAC data-confirm path (cGpDataCnfHandler() ->
- *      zb_buf_free()), not by this file.
- *
- *      Note: gpDataReq() (the higher-level GP-DATA.request primitive used
- *      in revision 3) was separately found, from the same recovered source,
- *      to not be a direct-send primitive at all even when called
- *      correctly: it only stores the request in a single-entry queue
- *      (gpTxQueue) for a *later* gp_gpdfTransSchedule() call to pick up -
- *      and that function is only ever invoked reactively, from a GPDF
- *      Maintenance frame actually received over the air (e.g. a sink's
- *      channel request). A one-way transmit-only GPD like this one has no
- *      such inbound trigger, so gpDataReq() would never transmit anything
- *      here regardless of the stack-vs-buffer issue above.
+ * The request is stored in a normal SDK buffer and later converted to
+ * MCPS-DATA.request by gpd_mac.c. Keeping it asynchronous is important:
+ * the MAC confirmation owns the buffer until transmission has completed.
  */
 #include "zcl_include.h"
 #include "gp.h"
@@ -80,9 +38,8 @@ static void gpd_transmit(u8 cmdId, const u8 *payload, u8 payloadLen)
         return;
     }
 
-    /* cGp_dataReq()/the MAC data-confirm path treat the pointer they're
-     * given as the zb_buf_t itself (see file header) - alias the request
-     * struct onto the buffer's own data area rather than a local variable. */
+    /* The request occupies the beginning of the pool buffer. The MAC
+     * confirmation path receives the same buffer and releases it later. */
     req = (cgp_data_req_t *)zbuf;
     TL_SETSTRUCTCONTENT(*req, 0);
     /* The MAC builder prepends its 802.15.4 header immediately before
@@ -146,13 +103,9 @@ static void gpd_transmit(u8 cmdId, const u8 *payload, u8 payloadLen)
     req->txOptions.useCSMACA = 1;
     req->txOptions.useMACACK = 0; /* broadcast: never acked */
 
-    /* cGp_dataReq is a task callback (see file header) - post it, don't
-     * call it directly. Ownership of zbuf transfers to the MAC data
-     * request/confirm pipeline; it must not be freed here. Scheduled via
-     * ev_timer_taskPost() with GP_TX_OFFSET (20ms, dGP_stub.h), matching
-     * the SDK's own gp_gpdfGenerate() - not posted as an immediate
-     * tl_zbTaskPost() task. */
-    ev_timer_taskPost((ev_timer_callback_t)cGp_dataReq, zbuf, GP_TX_OFFSET);
+    /* The local adapter is a task callback. Ownership of zbuf transfers to
+     * the MAC request/confirm pipeline; it must not be freed here. */
+    ev_timer_taskPost(gpd_macDataReq, zbuf, GP_TX_OFFSET);
 }
 
 void gpd_init(const gpd_config_t *cfg)

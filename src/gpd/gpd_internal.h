@@ -16,6 +16,9 @@ typedef struct {
 
 extern gpd_state_t g_gpd;
 
+/* Convert a GPD request into the SDK's MAC data primitive. */
+s32 gpd_macDataReq(void *arg);
+
 /* gpd_security.c: computes a 4-byte CCM* MIC over `asdu` (the plaintext GPD
  * command id + payload), authenticating `aad` (the clear GPDF NWK header
  * bytes) as additional data. `frameCounter` is folded into the CCM* nonce

@@ -24,8 +24,6 @@
  *******************************************************************************************************/
 
 #include "zb_common.h"
-// #include "app_gpio.h"
-
 extern void user_init(bool isRetention);
 
 startup_state_e drv_platform_init(void);
@@ -36,11 +34,6 @@ int flash_main(void){
     u8 isRetention = (state == SYSTEM_DEEP_RETENTION) ? 1 : 0;
 
     os_init(isRetention);
-
-#if 0
-    extern void moduleTest_start(void);
-    moduleTest_start();
-#endif
 
     user_init(isRetention);
 
@@ -70,6 +63,10 @@ int flash_main(void){
 #endif
 
         tl_zbTaskProcedure();
+
+#if PM_ENABLE
+        drv_pm_lowPowerEnter();
+#endif
 
 #if (MODULE_WATCHDOG_ENABLE)
         drv_wd_clear();

@@ -3,13 +3,11 @@
  * encryption) support: CCM* nonce construction and MIC computation.
  *
  * Uses the SDK's generic aes_ccmAuthTran() (zigbee/ss/security_service.h),
- * which is exported from the router/coordinator Zigbee stack lib and needs
- * no NWK key-table setup - confirmed against its disabled reference call
- * site in apps/common/module_test.c (MODULE_TEST_CCM).
+ * which is exported from the Zigbee stack library and needs no NWK
+ * key-table setup.
  *
  * Nonce layout, per the Zigbee GP spec's AES-CCM* nonce for GPD frames
- * (cross-checked against the NXP zigate coordinator's GP key-transport
- * nonce construction, which uses the same shape for the IEEE/SrcID case):
+ * for the IEEE/SrcID addressing case:
  *   SrcID (4 bytes, little-endian), repeated twice (8 bytes)
  *   || Security Frame Counter (4 bytes, little-endian)
  *   || Security Control byte (1 byte, 0x05)
