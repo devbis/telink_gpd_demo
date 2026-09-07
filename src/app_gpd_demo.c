@@ -40,10 +40,9 @@ void app_gpd_demo_init(void)
 
     gpd_init(&cfg);
 
-    /* A single call is enough: the underlying gpDataReq() already
-     * retransmits this frame repeatedly on its own (see the KNOWN ISSUE
-     * comment in gpd_frame.c) - a manual 3x burst would only make the
-     * over-repetition worse. */
+    /* The commissioning frame is sent once.  Periodic application commands
+     * are scheduled below; cGp_dataReq() itself does not maintain a retry
+     * queue for these broadcast frames. */
     gpd_sendCommissioning(APP_GPD_DEMO_DEVICE_ID);
 
     TL_ZB_TIMER_SCHEDULE(app_gpd_demo_periodicCb, NULL, TIMEOUT_10SEC);

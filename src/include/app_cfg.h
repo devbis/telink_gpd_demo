@@ -202,7 +202,7 @@ extern "C" {
 //#define ZCL_ELECTRICAL_MEASUREMENT_SUPPORT          ON
 //#define ZCL_METERING_SUPPORT                        ON
 //#define ZCL_SE_CALENDAR_SUPPORT                     ON
-//#define ZCL_GP_SUPPORT                              ON
+#define ZCL_GP_SUPPORT                              ON
 //#define ZCL_LEVEL_CTRL_SUPPORT                      ON
 //#define ZCL_THERMOSTAT_SUPPORT                      ON
 //#define ZCL_THERMOSTAT_UI_CFG_SUPPORT               ON

@@ -10,7 +10,9 @@ app_ctx_t g_appCtx = {
  * is a Green Power Device using cGp_dataReq() (a MAC-layer primitive,
  * independent of NWK/ZDO join state) to transmit, so it never needs to join
  * a Zigbee network. The ZDO indication callbacks below are still registered
- * because zb_init() wires them up unconditionally. */
+ * because zb_init() wires them up unconditionally. (A temporary bdb_init()
+ * diagnostic was run here earlier to compare against a known-good BeaconReq
+ * transmission - see git history - and has been removed again.) */
 const zdo_appIndCb_t appCbLst = {
     bdb_zdoStartDevCnf,//start device cnf cb
     NULL,//reset cnf cb
@@ -76,6 +78,16 @@ void user_app_init(void)
 
     /* Register ZCL specific cluster information */
     zcl_register(APP_ENDPOINT1, APP_EP1_CB_CLUSTER_NUM, (zcl_specClusterInfo_t *)g_appEp1ClusterList);
+
+    /* Bring up the real GP module (endpoint 242, gpStubCbInit()/
+     * gp_proxyInit()) before transmitting - gpDataReq()'s internal TX queue
+     * needs this to manage retries correctly instead of retransmitting a
+     * single request forever (see src/gpd/gpd_frame.c's KNOWN ISSUE
+     * history). gp_proxyTab is a receive/relay (GPP) structure, not
+     * consulted for our own outbound sends, so it's not pre-populated. The
+     * endpoint argument is unused for a Basic Proxy build (GP_BASIC_COMBO=0
+     * in gp.h), any registered endpoint works. */
+    gp_init(APP_ENDPOINT1);
 
     /* Start the Green Power Device transmitter: sends the commissioning
      * burst now, then a periodic GP command every 10 seconds. */

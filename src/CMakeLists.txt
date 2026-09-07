@@ -68,9 +68,9 @@ SET(ZIGBEE_SRC
     ${SDK_PREFIX}/zigbee/zcl/general/zcl_devTemperatureCfg_attr.c
     ${SDK_PREFIX}/zigbee/zcl/general/zcl_diagnostics.c
     ${SDK_PREFIX}/zigbee/zcl/general/zcl_diagnostics_attr.c
-    # Green Power is disabled for this device.
-    # ${SDK_PREFIX}/zigbee/zcl/general/zcl_greenPower.c
-    # ${SDK_PREFIX}/zigbee/zcl/general/zcl_greenPower_attr.c
+    # zcl_greenPower_attr.c is dead code in this SDK version (its whole body
+    # is #if 0'd out, superseded by gpEpCfg.c's attribute table) - not built.
+    ${SDK_PREFIX}/zigbee/zcl/general/zcl_greenPower.c
     ${SDK_PREFIX}/zigbee/zcl/general/zcl_group.c
     ${SDK_PREFIX}/zigbee/zcl/general/zcl_group_attr.c
     ${SDK_PREFIX}/zigbee/zcl/general/zcl_identify.c
@@ -105,15 +105,15 @@ SET(ZIGBEE_SRC
     ${SDK_PREFIX}/zigbee/af/zb_af.c
     ${SDK_PREFIX}/zigbee/wwah/wwah.c
     ${SDK_PREFIX}/zigbee/wwah/wwahEpCfg.c
-    # Green Power is disabled for this device.
-    # ${SDK_PREFIX}/zigbee/gp/gp.c
-    # ${SDK_PREFIX}/zigbee/gp/gpEpCfg.c
-    # ${SDK_PREFIX}/zigbee/gp/gp_proxyTab.c
-    # ${SDK_PREFIX}/zigbee/gp/gp_proxy.c  # for router
-    # ${SDK_PREFIX}/zigbee/gp/gp_sink.c
-    # ${SDK_PREFIX}/zigbee/gp/gp_sinkTab.c
-    # ${SDK_PREFIX}/zigbee/gp/gp_trans.c
-    # ${SDK_PREFIX}/zigbee/gp/gp_transCfg.c
+    # Real GP module: gp_init() registers the GP endpoint (242) and brings up
+    # gpStubCbInit()/gp_proxyInit() so gpDataReq()'s internal TX queue is
+    # properly managed (see gpd_frame.c's KNOWN ISSUE history). gp_sink*.c /
+    # gp_trans*.c compile to nothing here (GP_BASIC_COMBO=0 in gp.h) so
+    # they're skipped - only the Basic Proxy role pieces are needed.
+    ${SDK_PREFIX}/zigbee/gp/gp.c
+    ${SDK_PREFIX}/zigbee/gp/gpEpCfg.c
+    ${SDK_PREFIX}/zigbee/gp/gp_proxyTab.c
+    ${SDK_PREFIX}/zigbee/gp/gp_proxy.c
     ${SDK_PREFIX}/zigbee/ss/ss_nv.c
     ${SDK_PREFIX}/zigbee/ota/ota.c
     ${SDK_PREFIX}/zigbee/ota/otaEpCfg.c
